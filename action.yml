@@ -1,0 +1,91 @@
+name: 'Setup UniForge'
+description: 'Install UniForge CLI for Unity development'
+author: 'neptaco'
+branding:
+  icon: 'box'
+  color: 'purple'
+
+inputs:
+  version:
+    description: 'UniForge version to install (e.g., "v1.0.0" or "latest")'
+    required: false
+    default: 'latest'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Determine download URL
+      id: url
+      shell: bash
+      run: |
+        VERSION="${{ inputs.version }}"
+
+        if [ "$VERSION" = "latest" ]; then
+          BASE_URL="https://github.com/neptaco/uniforge/releases/latest/download"
+        else
+          BASE_URL="https://github.com/neptaco/uniforge/releases/download/${VERSION}"
+        fi
+
+        # Determine architecture
+        case "${{ runner.arch }}" in
+          X64)
+            ARCH="amd64"
+            ;;
+          ARM64)
+            ARCH="arm64"
+            ;;
+          *)
+            echo "::error::Unsupported architecture: ${{ runner.arch }}"
+            exit 1
+            ;;
+        esac
+
+        # Determine OS and archive extension
+        case "${{ runner.os }}" in
+          Linux)
+            echo "url=${BASE_URL}/uniforge_linux_${ARCH}.tar.gz" >> $GITHUB_OUTPUT
+            echo "archive=tar.gz" >> $GITHUB_OUTPUT
+            ;;
+          macOS)
+            echo "url=${BASE_URL}/uniforge_darwin_${ARCH}.tar.gz" >> $GITHUB_OUTPUT
+            echo "archive=tar.gz" >> $GITHUB_OUTPUT
+            ;;
+          Windows)
+            if [ "$ARCH" = "arm64" ]; then
+              echo "::error::Windows ARM64 is not supported"
+              exit 1
+            fi
+            echo "url=${BASE_URL}/uniforge_windows_${ARCH}.zip" >> $GITHUB_OUTPUT
+            echo "archive=zip" >> $GITHUB_OUTPUT
+            ;;
+          *)
+            echo "::error::Unsupported OS: ${{ runner.os }}"
+            exit 1
+            ;;
+        esac
+
+    - name: Download and extract UniForge (Linux/macOS)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        curl -fsSL "${{ steps.url.outputs.url }}" -o uniforge.tar.gz
+        tar -xzf uniforge.tar.gz
+        chmod +x uniforge
+        sudo mv uniforge /usr/local/bin/
+        rm uniforge.tar.gz
+
+    - name: Download and extract UniForge (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $url = "${{ steps.url.outputs.url }}"
+        $output = "uniforge.zip"
+        Invoke-WebRequest -Uri $url -OutFile $output
+        Expand-Archive -Path $output -DestinationPath "." -Force
+        Move-Item -Path "uniforge.exe" -Destination "$env:RUNNER_TOOL_CACHE\uniforge.exe" -Force
+        echo "$env:RUNNER_TOOL_CACHE" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        Remove-Item $output -Force
+
+    - name: Verify installation
+      shell: bash
+      run: uniforge --version
