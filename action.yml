@@ -31,7 +31,9 @@ runs:
         git clone https://github.com/neptaco/uniforge.git /tmp/uniforge-src && cd /tmp/uniforge-src && git checkout "$REF"
 
         cd /tmp/uniforge-src
-        go build -o uniforge .
+        VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+        echo "Building version: $VERSION"
+        go build -ldflags "-X main.version=$VERSION" -o uniforge .
         sudo mv uniforge /usr/local/bin/
         rm -rf /tmp/uniforge-src
         uniforge --version
@@ -55,7 +57,10 @@ runs:
           Set-Location $TempDir
         }
 
-        go build -o uniforge.exe .
+        $Version = git describe --tags --always --dirty 2>$null
+        if (-not $Version) { $Version = "dev" }
+        Write-Host "Building version: $Version"
+        go build -ldflags "-X main.version=$Version" -o uniforge.exe .
 
         $InstallDir = "$env:RUNNER_TOOL_CACHE"
         Move-Item -Path "uniforge.exe" -Destination "$InstallDir\uniforge.exe" -Force
