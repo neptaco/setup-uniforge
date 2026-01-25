@@ -22,11 +22,26 @@ steps:
     version: v1.0.0
 ```
 
+### Build from source (development)
+
+Build from a specific branch, tag, or commit SHA. Requires Go to be installed.
+
+```yaml
+- uses: actions/setup-go@v5
+  with:
+    go-version: '1.24'
+
+- uses: neptaco/setup-uniforge@main
+  with:
+    ref: main  # branch, tag, or commit SHA
+```
+
 ## Inputs
 
 | Name | Description | Required | Default |
 |------|-------------|----------|---------|
 | `version` | UniForge version to install (e.g., `v1.0.0` or `latest`) | No | `latest` |
+| `ref` | Build from source at this ref (branch, tag, or commit SHA). Requires Go. | No | `''` |
 
 ## Supported Platforms
 
