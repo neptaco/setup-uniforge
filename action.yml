@@ -25,6 +25,13 @@ runs:
       run: |
         set -euo pipefail
         REF="${{ inputs.ref }}"
+
+        # Validate ref: allow branch names, tags, and commit SHAs
+        if [[ ! "$REF" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
+          echo "::error::Invalid ref format: $REF"
+          exit 1
+        fi
+
         echo "Building UniForge from ref: $REF"
 
         # Clone and build
@@ -51,6 +58,13 @@ runs:
       shell: pwsh
       run: |
         $Ref = "${{ inputs.ref }}"
+
+        # Validate ref: allow branch names, tags, and commit SHAs
+        if ($Ref -notmatch '^[a-zA-Z0-9._/-]+$') {
+          Write-Error "Invalid ref format: $Ref"
+          exit 1
+        }
+
         Write-Host "Building UniForge from ref: $Ref"
 
         # Clone and build
@@ -87,6 +101,12 @@ runs:
       run: |
         set -euo pipefail
         VERSION="${{ inputs.version }}"
+
+        # Validate version: allow "latest" or semver tags (vX.Y.Z)
+        if [[ ! "$VERSION" =~ ^(latest|v[0-9]+\.[0-9]+\.[0-9]+.*)$ ]]; then
+          echo "::error::Invalid version format: $VERSION (expected 'latest' or 'vX.Y.Z')"
+          exit 1
+        fi
 
         if [ "$VERSION" = "latest" ]; then
           BASE_URL="https://github.com/neptaco/uniforge/releases/latest/download"
@@ -133,6 +153,12 @@ runs:
       shell: pwsh
       run: |
         $Version = "${{ inputs.version }}"
+
+        # Validate version: allow "latest" or semver tags (vX.Y.Z)
+        if ($Version -notmatch '^(latest|v[0-9]+\.[0-9]+\.[0-9]+.*)$') {
+          Write-Error "Invalid version format: $Version (expected 'latest' or 'vX.Y.Z')"
+          exit 1
+        }
 
         if ($Version -eq "latest") {
           $BaseUrl = "https://github.com/neptaco/uniforge/releases/latest/download"
