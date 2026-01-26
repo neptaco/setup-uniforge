@@ -23,6 +23,7 @@ runs:
       if: inputs.ref != '' && runner.os != 'Windows'
       shell: bash
       run: |
+        set -euo pipefail
         REF="${{ inputs.ref }}"
         echo "Building UniForge from ref: $REF"
 
@@ -80,6 +81,7 @@ runs:
       if: inputs.ref == '' && runner.os != 'Windows'
       shell: bash
       run: |
+        set -euo pipefail
         VERSION="${{ inputs.version }}"
 
         if [ "$VERSION" = "latest" ]; then
