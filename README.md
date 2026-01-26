@@ -17,9 +17,26 @@ steps:
 ### With version
 
 ```yaml
+# Full version
 - uses: neptaco/setup-uniforge@v1
   with:
     version: v1.0.0
+
+# Major version (latest v1.x.x)
+- uses: neptaco/setup-uniforge@v1
+  with:
+    version: v1
+
+# Minor version (latest v1.2.x)
+- uses: neptaco/setup-uniforge@v1
+  with:
+    version: v1.2
+
+# With token to avoid API rate limits
+- uses: neptaco/setup-uniforge@v1
+  with:
+    version: v1
+    token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ### Build from source (development)
@@ -40,8 +57,9 @@ Build from a specific branch, tag, or commit SHA. Requires Go to be installed.
 
 | Name | Description | Required | Default |
 |------|-------------|----------|---------|
-| `version` | UniForge version to install (e.g., `v1.0.0` or `latest`) | No | `latest` |
+| `version` | UniForge version to install (`latest`, `vX.Y.Z`, `vX`, or `vX.Y`) | No | `latest` |
 | `ref` | Build from source at this ref (branch, tag, or commit SHA). Requires Go. | No | `''` |
+| `token` | GitHub token for API requests (use to avoid rate limits when using partial version) | No | `''` |
 
 ## Supported Platforms
 

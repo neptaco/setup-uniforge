@@ -7,11 +7,15 @@ branding:
 
 inputs:
   version:
-    description: 'UniForge version to install (e.g., "v1.0.0" or "latest")'
+    description: 'UniForge version to install (e.g., "latest", "v1.0.0", "v1", "v1.2")'
     required: false
     default: 'latest'
   ref:
     description: 'Build from source at this ref (branch, tag, or commit SHA). Requires Go to be installed.'
+    required: false
+    default: ''
+  token:
+    description: 'GitHub token for API requests (optional, use to avoid rate limits when using partial version)'
     required: false
     default: ''
 
@@ -102,15 +106,52 @@ runs:
     - name: Install UniForge (Linux/macOS)
       if: inputs.ref == '' && runner.os != 'Windows'
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
       run: |
         set -euo pipefail
         VERSION="${{ inputs.version }}"
 
-        # Validate version: allow "latest" or semver tags (vX.Y.Z)
-        if [[ ! "$VERSION" =~ ^(latest|v[0-9]+\.[0-9]+\.[0-9]+.*)$ ]]; then
-          echo "::error::Invalid version format: $VERSION (expected 'latest' or 'vX.Y.Z')"
+        # Validate version: allow "latest", semver tags (vX.Y.Z), major (vX), or minor (vX.Y)
+        if [[ ! "$VERSION" =~ ^(latest|v[0-9]+(\.[0-9]+)?(\.[0-9]+)?.*)$ ]]; then
+          echo "::error::Invalid version format: $VERSION (expected 'latest', 'vX', 'vX.Y', or 'vX.Y.Z')"
           exit 1
         fi
+
+        # Resolve partial version (vX or vX.Y) to full version
+        resolve_version() {
+          local input="$1"
+
+          # latest or full semver (vX.Y.Z) - return as-is
+          if [[ "$input" = "latest" ]] || [[ "$input" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "$input"
+            return
+          fi
+
+          # Partial version - query GitHub API
+          local curl_opts=(-fsSL)
+          if [ -n "${GITHUB_TOKEN:-}" ]; then
+            curl_opts+=(-H "Authorization: token $GITHUB_TOKEN")
+          fi
+
+          local releases
+          releases=$(curl "${curl_opts[@]}" "https://api.github.com/repos/neptaco/uniforge/releases" | jq -r '.[].tag_name')
+
+          # Pattern match: v1 -> v1.*, v1.2 -> v1.2.*
+          local pattern="^${input}\."
+          local matched
+          matched=$(echo "$releases" | grep -E "$pattern" | head -1)
+
+          if [ -z "$matched" ]; then
+            echo "::error::No release found matching pattern: $input"
+            exit 1
+          fi
+
+          echo "$matched"
+        }
+
+        VERSION=$(resolve_version "$VERSION")
+        echo "Resolved version: $VERSION"
 
         if [ "$VERSION" = "latest" ]; then
           BASE_URL="https://github.com/neptaco/uniforge/releases/latest/download"
@@ -184,14 +225,49 @@ runs:
     - name: Install UniForge (Windows)
       if: inputs.ref == '' && runner.os == 'Windows'
       shell: pwsh
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
       run: |
         $Version = "${{ inputs.version }}"
 
-        # Validate version: allow "latest" or semver tags (vX.Y.Z)
-        if ($Version -notmatch '^(latest|v[0-9]+\.[0-9]+\.[0-9]+.*)$') {
-          Write-Error "Invalid version format: $Version (expected 'latest' or 'vX.Y.Z')"
+        # Validate version: allow "latest", semver tags (vX.Y.Z), major (vX), or minor (vX.Y)
+        if ($Version -notmatch '^(latest|v[0-9]+(\.[0-9]+)?(\.[0-9]+)?.*)$') {
+          Write-Error "Invalid version format: $Version (expected 'latest', 'vX', 'vX.Y', or 'vX.Y.Z')"
           exit 1
         }
+
+        # Resolve partial version (vX or vX.Y) to full version
+        function Resolve-Version {
+          param([string]$Input)
+
+          # latest or full semver (vX.Y.Z) - return as-is
+          if ($Input -eq "latest" -or $Input -match '^v[0-9]+\.[0-9]+\.[0-9]+') {
+            return $Input
+          }
+
+          # Partial version - query GitHub API
+          $headers = @{}
+          if ($env:GITHUB_TOKEN) {
+            $headers["Authorization"] = "token $env:GITHUB_TOKEN"
+          }
+
+          $releases = (Invoke-RestMethod -Uri "https://api.github.com/repos/neptaco/uniforge/releases" -Headers $headers) |
+                      ForEach-Object { $_.tag_name }
+
+          # Pattern match: v1 -> v1.*, v1.2 -> v1.2.*
+          $pattern = "^$Input\."
+          $matched = $releases | Where-Object { $_ -match $pattern } | Select-Object -First 1
+
+          if (-not $matched) {
+            Write-Error "No release found matching pattern: $Input"
+            exit 1
+          }
+
+          return $matched
+        }
+
+        $Version = Resolve-Version -Input $Version
+        Write-Host "Resolved version: $Version"
 
         if ($Version -eq "latest") {
           $BaseUrl = "https://github.com/neptaco/uniforge/releases/latest/download"
