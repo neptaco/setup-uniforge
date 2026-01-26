@@ -31,8 +31,12 @@ runs:
         SRC_DIR="${RUNNER_TEMP:-/tmp}/uniforge-src"
         trap 'rm -rf "$SRC_DIR" 2>/dev/null' EXIT
 
-        git clone --depth 1 --branch "$REF" https://github.com/neptaco/uniforge.git "$SRC_DIR" || \
-        git clone https://github.com/neptaco/uniforge.git "$SRC_DIR" && cd "$SRC_DIR" && git checkout "$REF"
+        # Try shallow clone with branch first, fallback to full clone + checkout
+        if ! git clone --depth 1 --branch "$REF" https://github.com/neptaco/uniforge.git "$SRC_DIR" 2>/dev/null; then
+          echo "Shallow clone failed, trying full clone with checkout..."
+          git clone https://github.com/neptaco/uniforge.git "$SRC_DIR"
+          git -C "$SRC_DIR" checkout "$REF"
+        fi
 
         cd "$SRC_DIR"
         VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -52,15 +56,15 @@ runs:
         # Clone and build
         $TempDir = "$env:RUNNER_TEMP\uniforge-src"
         try {
-          git clone --depth 1 --branch $Ref https://github.com/neptaco/uniforge.git $TempDir
+          # Try shallow clone with branch first, fallback to full clone + checkout
+          git clone --depth 1 --branch $Ref https://github.com/neptaco/uniforge.git $TempDir 2>$null
           if ($LASTEXITCODE -ne 0) {
+            Write-Host "Shallow clone failed, trying full clone with checkout..."
             git clone https://github.com/neptaco/uniforge.git $TempDir
-            Set-Location $TempDir
-            git checkout $Ref
-          } else {
-            Set-Location $TempDir
+            git -C $TempDir checkout $Ref
           }
 
+          Set-Location $TempDir
           $Version = git describe --tags --always --dirty 2>$null
           if (-not $Version) { $Version = "dev" }
           Write-Host "Building version: $Version"
