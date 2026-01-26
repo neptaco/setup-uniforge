@@ -238,11 +238,11 @@ runs:
 
         # Resolve partial version (vX or vX.Y) to full version
         function Resolve-Version {
-          param([string]$Input)
+          param([string]$VersionInput)
 
           # latest or full semver (vX.Y.Z) - return as-is
-          if ($Input -eq "latest" -or $Input -match '^v[0-9]+\.[0-9]+\.[0-9]+') {
-            return $Input
+          if ($VersionInput -eq "latest" -or $VersionInput -match '^v[0-9]+\.[0-9]+\.[0-9]+') {
+            return $VersionInput
           }
 
           # Partial version - query GitHub API
@@ -255,18 +255,18 @@ runs:
                       ForEach-Object { $_.tag_name }
 
           # Pattern match: v1 -> v1.*, v1.2 -> v1.2.*
-          $pattern = "^$Input\."
+          $pattern = "^$VersionInput\."
           $matched = $releases | Where-Object { $_ -match $pattern } | Select-Object -First 1
 
           if (-not $matched) {
-            Write-Error "No release found matching pattern: $Input"
+            Write-Error "No release found matching pattern: $VersionInput"
             exit 1
           }
 
           return $matched
         }
 
-        $Version = Resolve-Version -Input $Version
+        $Version = Resolve-Version -VersionInput $Version
         Write-Host "Resolved version: $Version"
 
         if ($Version -eq "latest") {
