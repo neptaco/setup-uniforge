@@ -135,10 +135,10 @@ runs:
         # Determine OS
         case "${{ runner.os }}" in
           Linux)
-            URL="${BASE_URL}/UniForge_linux_${ARCH}.tar.gz"
+            URL="${BASE_URL}/uniforge_linux_${ARCH}.tar.gz"
             ;;
           macOS)
-            URL="${BASE_URL}/UniForge_darwin_${ARCH}.tar.gz"
+            URL="${BASE_URL}/uniforge_darwin_${ARCH}.tar.gz"
             ;;
         esac
 
@@ -206,7 +206,7 @@ runs:
           exit 1
         }
 
-        $ArchiveName = "UniForge_windows_amd64.tar.gz"
+        $ArchiveName = "uniforge_windows_amd64.tar.gz"
         $Url = "$BaseUrl/$ArchiveName"
         $TempFile = "$env:RUNNER_TEMP\uniforge.tar.gz"
         $ChecksumFile = "$env:RUNNER_TEMP\checksums.txt"
