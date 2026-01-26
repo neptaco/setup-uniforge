@@ -39,6 +39,42 @@ jobs:
       - name: Verify installation
         run: uniforge --version
 
+  test-major-version:
+    name: Test major version (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, macos-15-intel, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup UniForge (major version v0)
+        uses: ./
+        with:
+          version: v0
+
+      - name: Verify installation
+        run: uniforge --version
+
+  test-minor-version:
+    name: Test minor version (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, macos-15-intel, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup UniForge (minor version v0.5)
+        uses: ./
+        with:
+          version: v0.5
+
+      - name: Verify installation
+        run: uniforge --version
+
   test-build-from-source:
     name: Test build from source (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
