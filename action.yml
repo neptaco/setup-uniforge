@@ -49,8 +49,12 @@ runs:
         VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
         echo "Building version: $VERSION"
         go build -ldflags "-X main.version=$VERSION" -o uniforge .
-        sudo mv uniforge /usr/local/bin/
-        uniforge --version
+
+        INSTALL_DIR="${RUNNER_TOOL_CACHE:-/usr/local/bin}"
+        mkdir -p "$INSTALL_DIR"
+        mv uniforge "$INSTALL_DIR/"
+        echo "$INSTALL_DIR" >> "$GITHUB_PATH"
+        "$INSTALL_DIR/uniforge" --version
 
     # Build from source (Windows)
     - name: Build from source (Windows)
@@ -169,8 +173,12 @@ runs:
 
         tar -xzf "$TEMP_FILE" -C "$TEMP_DIR"
         chmod +x "${{ runner.temp }}/uniforge"
-        sudo mv "${{ runner.temp }}/uniforge" /usr/local/bin/
-        uniforge --version
+
+        INSTALL_DIR="${RUNNER_TOOL_CACHE:-${{ runner.temp }}}"
+        mkdir -p "$INSTALL_DIR"
+        mv "${{ runner.temp }}/uniforge" "$INSTALL_DIR/"
+        echo "$INSTALL_DIR" >> "$GITHUB_PATH"
+        "$INSTALL_DIR/uniforge" --version
 
     # Download release (Windows)
     - name: Install UniForge (Windows)
