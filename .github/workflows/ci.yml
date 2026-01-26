@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-release:
+    name: Test release (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, macos-13, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup UniForge (latest)
+        uses: ./
+
+      - name: Verify installation
+        run: uniforge --version
+
+  test-specific-version:
+    name: Test specific version (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, macos-13, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup UniForge (v1.2.0)
+        uses: ./
+        with:
+          version: v1.2.0
+
+      - name: Verify installation
+        run: uniforge --version
+
+  test-build-from-source:
+    name: Test build from source (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, macos-13, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Setup UniForge (from source)
+        uses: ./
+        with:
+          ref: main
+
+      - name: Verify installation
+        run: uniforge --version
