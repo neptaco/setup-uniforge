@@ -28,6 +28,8 @@ runs:
 
         # Clone and build
         SRC_DIR="${RUNNER_TEMP:-/tmp}/uniforge-src"
+        trap 'rm -rf "$SRC_DIR" 2>/dev/null' EXIT
+
         git clone --depth 1 --branch "$REF" https://github.com/neptaco/uniforge.git "$SRC_DIR" || \
         git clone https://github.com/neptaco/uniforge.git "$SRC_DIR" && cd "$SRC_DIR" && git checkout "$REF"
 
@@ -36,7 +38,6 @@ runs:
         echo "Building version: $VERSION"
         go build -ldflags "-X main.version=$VERSION" -o uniforge .
         sudo mv uniforge /usr/local/bin/
-        rm -rf "$SRC_DIR"
         uniforge --version
 
     # Build from source (Windows)
@@ -49,28 +50,30 @@ runs:
 
         # Clone and build
         $TempDir = "$env:RUNNER_TEMP\uniforge-src"
-        git clone --depth 1 --branch $Ref https://github.com/neptaco/uniforge.git $TempDir
-        if ($LASTEXITCODE -ne 0) {
-          git clone https://github.com/neptaco/uniforge.git $TempDir
-          Set-Location $TempDir
-          git checkout $Ref
-        } else {
-          Set-Location $TempDir
+        try {
+          git clone --depth 1 --branch $Ref https://github.com/neptaco/uniforge.git $TempDir
+          if ($LASTEXITCODE -ne 0) {
+            git clone https://github.com/neptaco/uniforge.git $TempDir
+            Set-Location $TempDir
+            git checkout $Ref
+          } else {
+            Set-Location $TempDir
+          }
+
+          $Version = git describe --tags --always --dirty 2>$null
+          if (-not $Version) { $Version = "dev" }
+          Write-Host "Building version: $Version"
+          go build -ldflags "-X main.version=$Version" -o uniforge.exe .
+
+          $InstallDir = "$env:RUNNER_TOOL_CACHE"
+          Move-Item -Path "uniforge.exe" -Destination "$InstallDir\uniforge.exe" -Force
+          "$InstallDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+          Set-Location $env:RUNNER_TEMP
+          & "$InstallDir\uniforge.exe" --version
+        } finally {
+          if (Test-Path $TempDir) { Remove-Item -Recurse -Force $TempDir }
         }
-
-        $Version = git describe --tags --always --dirty 2>$null
-        if (-not $Version) { $Version = "dev" }
-        Write-Host "Building version: $Version"
-        go build -ldflags "-X main.version=$Version" -o uniforge.exe .
-
-        $InstallDir = "$env:RUNNER_TOOL_CACHE"
-        Move-Item -Path "uniforge.exe" -Destination "$InstallDir\uniforge.exe" -Force
-        "$InstallDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-        Set-Location $env:RUNNER_TEMP
-        Remove-Item -Recurse -Force $TempDir
-
-        & "$InstallDir\uniforge.exe" --version
 
     # Download release (Linux/macOS)
     - name: Install UniForge (Linux/macOS)
@@ -110,11 +113,12 @@ runs:
         esac
 
         TEMP_FILE="${{ runner.temp }}/uniforge.tar.gz"
+        trap 'rm -f "$TEMP_FILE" 2>/dev/null' EXIT
+
         curl -fsSL "$URL" -o "$TEMP_FILE"
         tar -xzf "$TEMP_FILE" -C "${{ runner.temp }}"
         chmod +x "${{ runner.temp }}/uniforge"
         sudo mv "${{ runner.temp }}/uniforge" /usr/local/bin/
-        rm "$TEMP_FILE"
         uniforge --version
 
     # Download release (Windows)
@@ -141,16 +145,18 @@ runs:
         $TempFile = "$env:RUNNER_TEMP\uniforge.tar.gz"
 
         Write-Host "Downloading from: $Url"
-        Invoke-WebRequest -Uri $Url -OutFile $TempFile
+        try {
+          Invoke-WebRequest -Uri $Url -OutFile $TempFile
 
-        tar -xzf $TempFile -C $env:RUNNER_TEMP
+          tar -xzf $TempFile -C $env:RUNNER_TEMP
 
-        # Add to PATH
-        $InstallDir = "$env:RUNNER_TOOL_CACHE"
-        Move-Item -Path "$env:RUNNER_TEMP\uniforge.exe" -Destination "$InstallDir\uniforge.exe" -Force
-        "$InstallDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          # Add to PATH
+          $InstallDir = "$env:RUNNER_TOOL_CACHE"
+          Move-Item -Path "$env:RUNNER_TEMP\uniforge.exe" -Destination "$InstallDir\uniforge.exe" -Force
+          "$InstallDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-        Remove-Item $TempFile -Force
-
-        # Verify
-        & "$InstallDir\uniforge.exe" --version
+          # Verify
+          & "$InstallDir\uniforge.exe" --version
+        } finally {
+          if (Test-Path $TempFile) { Remove-Item $TempFile -Force }
+        }
