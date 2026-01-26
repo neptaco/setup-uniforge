@@ -138,11 +138,36 @@ runs:
             ;;
         esac
 
-        TEMP_FILE="${{ runner.temp }}/uniforge.tar.gz"
-        trap 'rm -f "$TEMP_FILE" 2>/dev/null' EXIT
+        TEMP_DIR="${{ runner.temp }}"
+        TEMP_FILE="${TEMP_DIR}/uniforge.tar.gz"
+        CHECKSUM_FILE="${TEMP_DIR}/checksums.txt"
+        trap 'rm -f "$TEMP_FILE" "$CHECKSUM_FILE" 2>/dev/null' EXIT
 
+        # Download archive and checksums
         curl -fsSL "$URL" -o "$TEMP_FILE"
-        tar -xzf "$TEMP_FILE" -C "${{ runner.temp }}"
+        curl -fsSL "${BASE_URL}/checksums.txt" -o "$CHECKSUM_FILE"
+
+        # Verify checksum
+        ARCHIVE_NAME=$(basename "$URL")
+        EXPECTED_CHECKSUM=$(grep "$ARCHIVE_NAME" "$CHECKSUM_FILE" | awk '{print $1}')
+        if [ -z "$EXPECTED_CHECKSUM" ]; then
+          echo "::error::Checksum not found for $ARCHIVE_NAME"
+          exit 1
+        fi
+
+        if command -v sha256sum &>/dev/null; then
+          ACTUAL_CHECKSUM=$(sha256sum "$TEMP_FILE" | awk '{print $1}')
+        else
+          ACTUAL_CHECKSUM=$(shasum -a 256 "$TEMP_FILE" | awk '{print $1}')
+        fi
+
+        if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+          echo "::error::Checksum mismatch! Expected: $EXPECTED_CHECKSUM, Got: $ACTUAL_CHECKSUM"
+          exit 1
+        fi
+        echo "Checksum verified: $ACTUAL_CHECKSUM"
+
+        tar -xzf "$TEMP_FILE" -C "$TEMP_DIR"
         chmod +x "${{ runner.temp }}/uniforge"
         sudo mv "${{ runner.temp }}/uniforge" /usr/local/bin/
         uniforge --version
@@ -173,12 +198,32 @@ runs:
           exit 1
         }
 
-        $Url = "$BaseUrl/UniForge_windows_amd64.tar.gz"
+        $ArchiveName = "UniForge_windows_amd64.tar.gz"
+        $Url = "$BaseUrl/$ArchiveName"
         $TempFile = "$env:RUNNER_TEMP\uniforge.tar.gz"
+        $ChecksumFile = "$env:RUNNER_TEMP\checksums.txt"
 
         Write-Host "Downloading from: $Url"
         try {
+          # Download archive and checksums
           Invoke-WebRequest -Uri $Url -OutFile $TempFile
+          Invoke-WebRequest -Uri "$BaseUrl/checksums.txt" -OutFile $ChecksumFile
+
+          # Verify checksum
+          $ChecksumContent = Get-Content $ChecksumFile
+          $ExpectedLine = $ChecksumContent | Where-Object { $_ -match $ArchiveName }
+          if (-not $ExpectedLine) {
+            Write-Error "Checksum not found for $ArchiveName"
+            exit 1
+          }
+          $ExpectedChecksum = ($ExpectedLine -split '\s+')[0]
+          $ActualChecksum = (Get-FileHash -Path $TempFile -Algorithm SHA256).Hash.ToLower()
+
+          if ($ExpectedChecksum -ne $ActualChecksum) {
+            Write-Error "Checksum mismatch! Expected: $ExpectedChecksum, Got: $ActualChecksum"
+            exit 1
+          }
+          Write-Host "Checksum verified: $ActualChecksum"
 
           tar -xzf $TempFile -C $env:RUNNER_TEMP
 
@@ -191,4 +236,5 @@ runs:
           & "$InstallDir\uniforge.exe" --version
         } finally {
           if (Test-Path $TempFile) { Remove-Item $TempFile -Force }
+          if (Test-Path $ChecksumFile) { Remove-Item $ChecksumFile -Force }
         }
