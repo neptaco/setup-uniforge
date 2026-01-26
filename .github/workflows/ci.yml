@@ -31,10 +31,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup UniForge (v1.2.0)
+      - name: Setup UniForge (v0.4.0)
         uses: ./
         with:
-          version: v1.2.0
+          version: v0.4.0
 
       - name: Verify installation
         run: uniforge --version
