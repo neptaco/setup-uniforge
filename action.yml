@@ -189,8 +189,8 @@ runs:
         trap 'rm -f "$TEMP_FILE" "$CHECKSUM_FILE" 2>/dev/null' EXIT
 
         # Download archive and checksums
-        curl -fsSL "$URL" -o "$TEMP_FILE"
-        curl -fsSL "${BASE_URL}/checksums.txt" -o "$CHECKSUM_FILE"
+        curl -fsSL --retry 3 --retry-connrefused --retry-delay 5 "$URL" -o "$TEMP_FILE"
+        curl -fsSL --retry 3 --retry-connrefused --retry-delay 5 "${BASE_URL}/checksums.txt" -o "$CHECKSUM_FILE"
 
         # Verify checksum
         ARCHIVE_NAME=$(basename "$URL")
