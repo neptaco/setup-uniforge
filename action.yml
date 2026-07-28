@@ -143,7 +143,8 @@ runs:
           matched=$(echo "$releases" | grep -E "$pattern" | head -1)
 
           if [ -z "$matched" ]; then
-            echo "::error::No release found matching pattern: $input"
+            # stdout is captured by command substitution, so report to stderr
+            echo "::error::No release found matching pattern: $input" >&2
             exit 1
           fi
 
