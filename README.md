@@ -10,8 +10,8 @@ steps:
 
   - uses: neptaco/setup-uniforge@v1
 
-  - run: uniforge editor install --from-project .
-  - run: uniforge run -p . --ci -- -executeMethod Build.Execute
+  - run: uniforge editor install --project .
+  - run: uniforge run . --ci -- -executeMethod Build.Execute
 ```
 
 ### With version
@@ -20,22 +20,22 @@ steps:
 # Full version
 - uses: neptaco/setup-uniforge@v1
   with:
-    version: v1.0.0
+    version: v0.13.0
 
-# Major version (latest v1.x.x)
+# Major version (latest v0.x.x)
 - uses: neptaco/setup-uniforge@v1
   with:
-    version: v1
+    version: v0
 
-# Minor version (latest v1.2.x)
+# Minor version (latest v0.13.x)
 - uses: neptaco/setup-uniforge@v1
   with:
-    version: v1.2
+    version: v0.13
 
 # With token to avoid API rate limits
 - uses: neptaco/setup-uniforge@v1
   with:
-    version: v1
+    version: v0
     token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
@@ -46,7 +46,7 @@ Build from a specific branch, tag, or commit SHA. Requires Go to be installed.
 ```yaml
 - uses: actions/setup-go@v5
   with:
-    go-version: '1.24'
+    go-version: '1.25'
 
 - uses: neptaco/setup-uniforge@main
   with:
